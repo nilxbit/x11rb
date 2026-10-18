@@ -159,6 +159,21 @@ mod file {
                 .map(|file| Ok(XAuthorityEntries(BufReader::new(file))))
                 .transpose()
         }
+
+        /// Open xauthority file for reading.
+        ///
+        /// This function returns `Ok(None)` when the location of the `.Xauthority` file could not
+        /// be determined. If opening the file failed (for example, because it does not exist),
+        /// that error is returned.
+        pub(crate) fn from(xauthority: &str) -> Result<Option<XAuthorityEntries>, Error> {
+            Some(PathBuf::from(xauthority))
+                .map(File::open)
+                .transpose()?
+                // At this point we have Option<File> and errors while opening the file were
+                // returned to the caller.
+                .map(|file| Ok(XAuthorityEntries(BufReader::new(file))))
+                .transpose()
+        }
     }
 
     impl Iterator for XAuthorityEntries {
@@ -247,6 +262,23 @@ pub(crate) type AuthInfo = (Vec<u8>, Vec<u8>);
 /// protocol name and data, respectively.
 pub fn get_auth(family: Family, address: &[u8], display: u16) -> Result<Option<AuthInfo>, Error> {
     match file::XAuthorityEntries::new()? {
+        None => Ok(None),
+        Some(entries) => get_auth_impl(entries, family, address, display),
+    }
+}
+
+/// Get the authentication information necessary for connecting to the given display.
+///
+/// - `xauthority` is the xauthority file.
+/// - `family` is the protocol family that is used for connecting; this describes how to interpret
+///   the `address`.
+/// - `address` is the raw bytes describing the address that is being connected to.
+/// - `display` is the display number.
+///
+/// If successful, this function returns that can be written to the X11 server as authorization
+/// protocol name and data, respectively.
+pub fn get_auth_from(xauthority: &str, family: Family, address: &[u8], display: u16) -> Result<Option<AuthInfo>, Error> {
+    match file::XAuthorityEntries::from(xauthority)? {
         None => Ok(None),
         Some(entries) => get_auth_impl(entries, family, address, display),
     }
