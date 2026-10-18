@@ -133,12 +133,24 @@ mod file {
         if let Some(name) = var_os("XAUTHORITY") {
             return Some(name.into());
         }
-        var_os("HOME").map(|prefix| {
-            let mut result = PathBuf::new();
-            result.push(prefix);
-            result.push(".Xauthority");
-            result
-        })
+        #[cfg(not(windows))]
+        {
+            var_os("HOME").map(|prefix| {
+                let mut result = PathBuf::new();
+                result.push(prefix);
+                result.push(".Xauthority");
+                result
+            })
+        }
+        #[cfg(windows)]
+        {
+            var_os("USERPROFILE").map(|prefix| {
+                let mut result = PathBuf::new();
+                result.push(prefix);
+                result.push(".Xauthority");
+                result
+            })
+        }
     }
 
     /// An iterator over the entries of an `.Xauthority` file
